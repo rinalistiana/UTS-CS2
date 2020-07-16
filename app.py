@@ -3,6 +3,10 @@ from flask import Flask, Response, json, jsonify, request, abort
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from flask_jwt_extended import (
+    JWTManager, jwt_required, create_access_token,
+    get_jwt_identity
+)
 
 #Rina Listiana 18090090
 
@@ -12,6 +16,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:@localhost:3306/kampus'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 ma = Marshmallow(app)
+app.config['JWT_SECRET_KEY'] = 'super-secret'  # Change this!
+jwt = JWTManager(app)
 
 
 class Mahasiswa(db.Model):
@@ -107,6 +113,33 @@ def delete_product(id):
   db.session.commit()
 
   return jsonify()
+
+@app.route('/login', methods=['POST'])
+def login():
+    if not request.is_json:
+        return jsonify({"msg": "Missing JSON in request"}), 400
+
+    username = request.json.get('username', None)
+    password = request.json.get('password', None)
+    if not username:
+        return jsonify({"msg": "Missing username parameter"}), 400
+    if not password:
+        return jsonify({"msg": "Missing password parameter"}), 400
+
+    if username != 'test' or password != 'test':
+        return jsonify({"msg": "Bad username or password"}), 401
+
+    # Identity can be any data that is json serializable
+    access_token = create_access_token(identity=username)
+    return jsonify(access_token=access_token), 200
+
+@app.route('/getUser', methods=['GET'])
+@jwt_required
+def getuser():
+    all_users = Mhs.get_all_users()
+    result = users_schema.dump(all_users)
+    return jsonify(result), 200
+    # return jsonify(Mhs.query.all()), 200
 
 
 if __name__ == '__main__':
